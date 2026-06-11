@@ -1,0 +1,23 @@
+# Node dependencies
+node_modules/
+**/node_modules/
+client/node_modules/
+server/node_modules/
+
+# Environment files
+.env
+.env.*
+.env.local
+
+# Secrets
+*.key
+*.pem
+*.secret
+.secret
+*.env
+
+# Editor/OS
+.DS_Store
+.vscode/
+
+.github/
