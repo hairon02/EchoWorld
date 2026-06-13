@@ -1,0 +1,83 @@
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:wght@400;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --echo-black: #0a0a0f;
+  --echo-dark: #12121a;
+  --echo-surface: #1a1a2e;
+  --echo-border: #2d2d4a;
+  --echo-gold: #c9a84c;
+  --echo-red: #8b2020;
+  --echo-text: #e8e0d0;
+  --echo-muted: #8a8090;
+  font-family: "Crimson Text", Georgia, serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100vh;
+  width: 100%;
+  background-color: #0a0a0f;
+  color: #e8e0d0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Crimson Text", Georgia, serif;
+  line-height: 1.6;
+}
+
+body::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size:
+    4px 4px,
+    4px 4px;
+  opacity: 0.4;
+  mix-blend-mode: overlay;
+}
+
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--echo-dark);
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--echo-border);
+  border-radius: 9999px;
+  border: 3px solid var(--echo-dark);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--echo-gold);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}

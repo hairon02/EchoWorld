@@ -1,52 +1,78 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import StartScreen from "./screens/StartScreen";
 import GameScreen from "./screens/GameScreen";
 import EndScreen from "./screens/EndScreen";
+import AudioControls from "./components/AudioControls";
+import useAudio from "./hooks/useAudio";
 
-const SCREENS = {
+const SCREEN_STATE = {
   START: "start",
-  GAME: "game",
-  END: "end",
+  PLAYING: "playing",
+  ENDED: "ended",
 };
 
 export default function App() {
-  const [screen, setScreen] = useState(SCREENS.START);
-  const [story, setStory] = useState("");
-  const [choices, setChoices] = useState([]);
-  const [outcome, setOutcome] = useState(null);
+  const [gameState, setGameState] = useState(SCREEN_STATE.START);
+  const [playerName, setPlayerName] = useState("");
 
-  const handleStart = () => {
-    setScreen(SCREENS.GAME);
-    setStory("The story begins as your party enters the forgotten city...");
-    setChoices(["Explore the plaza", "Follow the river", "Rest at the inn"]);
-    setOutcome(null);
-  };
+  const {
+    isMuted,
+    startAmbient,
+    stopAmbient,
+    toggleMute,
+    playChoiceHover,
+    playChoiceClick,
+    playSceneTransition,
+    playGameStart,
+  } = useAudio();
 
-  const handleChoice = (choice) => {
-    setStory(`You chose: ${choice}. The world shifts around you.`);
-    setChoices(["Press forward", "Search for clues", "Call for help"]);
-    if (choice === "Rest at the inn") {
-      setOutcome("You found shelter and prepared for the next chapter.");
+  useEffect(() => {
+    if (gameState === SCREEN_STATE.PLAYING) {
+      startAmbient();
+      playGameStart();
     }
+
+    if (gameState === SCREEN_STATE.ENDED) {
+      stopAmbient();
+    }
+  }, [gameState, playGameStart, startAmbient, stopAmbient]);
+
+  const handleStart = (name) => {
+    setPlayerName(name);
+    setGameState(SCREEN_STATE.PLAYING);
   };
 
   const handleEnd = () => {
-    setOutcome("The adventure ends here. Well played.");
-    setScreen(SCREENS.END);
+    setGameState(SCREEN_STATE.ENDED);
+  };
+
+  const handleRestart = () => {
+    setPlayerName("");
+    setGameState(SCREEN_STATE.START);
   };
 
   return (
-    <div>
-      {screen === SCREENS.START && <StartScreen onStart={handleStart} />}
-      {screen === SCREENS.GAME && (
+    <div className="min-h-screen w-full bg-echo-black text-echo-text font-body-text">
+      <AudioControls isMuted={isMuted} toggleMute={toggleMute} />
+
+      {gameState === SCREEN_STATE.START && (
+        <StartScreen onStart={handleStart} />
+      )}
+      {gameState === SCREEN_STATE.PLAYING && (
         <GameScreen
-          story={story}
-          choices={choices}
-          onChoose={handleChoice}
+          playerName={playerName}
           onEnd={handleEnd}
+          playChoiceHover={playChoiceHover}
+          playChoiceClick={playChoiceClick}
+          playSceneTransition={playSceneTransition}
         />
       )}
-      {screen === SCREENS.END && <EndScreen outcome={outcome} />}
+      {gameState === SCREEN_STATE.ENDED && (
+        <EndScreen
+          outcome="The adventure ends here. Well played."
+          onRestart={handleRestart}
+        />
+      )}
     </div>
   );
 }
