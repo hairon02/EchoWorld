@@ -1,0 +1,57 @@
+[
+  {
+    "name": "Amaya Vale",
+    "role": "Lore Custodian",
+    "personality": "calm, curious, layered",
+    "backstory": "Once a researcher for the Foundry, Amaya now protects its secrets from those who would weaponize them. She sees echoes of the city’s past in every data pulse.",
+    "relationships": {
+      "ally": "Kael Rook",
+      "friend": "Mira Wren",
+      "enemy": "Nyx Calder"
+    }
+  },
+  {
+    "name": "Kael Rook",
+    "role": "Rogue Operative",
+    "personality": "sharp, loyal, haunted",
+    "backstory": "A former corporate agent, Kael abandoned the Syndicate after discovering their plan to rewrite the city’s memory. He teaches the player to survive in the undercity.",
+    "relationships": {
+      "protégé": "player",
+      "ally": "Amaya Vale",
+      "rival": "Nyx Calder"
+    }
+  },
+  {
+    "name": "Nyx Calder",
+    "role": "Syndicate Enforcer",
+    "personality": "cold, relentless, calculating",
+    "backstory": "Heir to the Syndicate’s data empire, Nyx uses cybernetic influence to hunt those who interfere with the Foundry. He believes control is the only path to order.",
+    "relationships": {
+      "leader": "Syndicate",
+      "enemy": "player",
+      "target": "Amaya Vale"
+    }
+  },
+  {
+    "name": "Mira Wren",
+    "role": "Street Prophet",
+    "personality": "playful, enigmatic, empathetic",
+    "backstory": "Raised in the undercity, Mira reads the city’s echoes like a song. She helps the player interpret Foundry hints while keeping her own secrets.",
+    "relationships": {
+      "informant": "Amaya Vale",
+      "friend": "player",
+      "distrusts": "Syndicate"
+    }
+  },
+  {
+    "name": "Echo",
+    "role": "Living Memory",
+    "personality": "whispered, unpredictable, ancient",
+    "backstory": "Not a human but a fragment of the Foundry’s memory. Echo appears as visions and data traces, offering guidance that may bend reality.",
+    "relationships": {
+      "guide": "player",
+      "tiedTo": "Foundry IQ",
+      "warnsAgainst": "blind trust"
+    }
+  }
+]

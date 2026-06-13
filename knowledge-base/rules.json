@@ -1,0 +1,19 @@
+{
+  "worldRules": [
+    "Every narrative scene must be grounded in Foundry IQ world context.",
+    "Choices always present exactly 3 distinct options.",
+    "Story tone must match the world tone: mysterious and cinematic.",
+    "Scenes should keep narrative text between 80 and 150 words."
+  ],
+  "forbiddenActions": [
+    "Do not generate a scene without grounding it in the world context.",
+    "Do not present more than 3 choices to the player.",
+    "Do not allow the player to break the city’s core memory rules.",
+    "Do not use modern fantasy tropes that conflict with the tech-noir setting."
+  ],
+  "narrativeConstraints": [
+    "Keep descriptions vivid but concise.",
+    "Maintain tension and a sense of impending consequence.",
+    "Always reference the city’s living intelligence when introducing a major choice."
+  ]
+}

@@ -12,9 +12,9 @@ async function connectToMongo() {
     mongoose.set("strictQuery", false);
     await mongoose
       .connect(config.MONGODB_URI)
-      .then(() => logger.info("connect to ", config.MONGODB_URI))
+      .then(() => console.log("connect to ", config.MONGODB_URI))
       .catch((error) =>
-        logger.error("error connecting to MongoDB", error.message),
+        console.error("error connecting to MongoDB", error.message),
       );
     console.log("MongoDB connected");
   } catch (err) {

@@ -1,0 +1,32 @@
+[
+  {
+    "sceneId": "scene-01",
+    "title": "Signal in the Rain",
+    "contextHints": "Opening encounter in the undercity. Introduce Amaya and the first cryptic Foundry echo. Establish that the city itself is listening.",
+    "sceneSummary": "The player hears a whispered signal through the rain-slicked streets. Amaya appears in the alley with a warning: the Syndicate is probing the Foundry. The first choice should force a quick decision about whether to investigate the source, trust Amaya and retreat, or use the signal to misdirect pursuers."
+  },
+  {
+    "sceneId": "scene-02",
+    "title": "Market of Lost Names",
+    "contextHints": "A crowded black market scene. Show Mira as an ally and reveal a hidden clue about a lost archive key. Create tension from Syndicate eyes in the crowd.",
+    "sceneSummary": "At the market, Mira offers to trade a rumor for a favor. The city’s crowds pulse with half-remembered echoes, and the player can decide whether to barter information, steal the clue, or confront a suspicious buyer."
+  },
+  {
+    "sceneId": "scene-03",
+    "title": "Skybridge Betrayal",
+    "contextHints": "High above the neon city, Kael warns of a Syndicate ambush. The scene should highlight the danger of trusting the wrong ally and the city’s memory of past betrayals.",
+    "sceneSummary": "On a glass skybridge, Kael reveals Syndicate trackers have followed the player. The city hums with data that could betray them. The player chooses to sprint across, disable the trackers, or use the bridge’s surveillance to turn the attack back on the pursuers."
+  },
+  {
+    "sceneId": "scene-04",
+    "title": "Archive Vault Gateway",
+    "contextHints": "A hidden vault entry that leads to ancient Foundry lore. Establish the artifact’s importance and the risk of triggering alarms.",
+    "sceneSummary": "In the archive’s shadowed gateway, the player must decide how to gain access: emulate a lost ritual from Echo’s whispers, hack the vault controls, or seek Mira’s deeper street knowledge. The scene should feel charged with the city’s living history."
+  },
+  {
+    "sceneId": "scene-05",
+    "title": "Rooftop Reflection",
+    "contextHints": "A quiet moment above the city. Use this scene to reinforce the tone and hint at the Syndicate’s broader plan.",
+    "sceneSummary": "Perched on a rooftop, the player watches neon reflections ripple across the skyline. Echo murmurs about the city’s fractured soul. The choice should be whether to follow the heart of the Foundry, chase Syndicate interference, or question Amaya’s true motives."
+  }
+]
