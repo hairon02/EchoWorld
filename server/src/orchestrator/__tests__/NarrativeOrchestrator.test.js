@@ -2,13 +2,25 @@
  * @jest-environment node
  */
 
+const mockCreateCompletion = jest.fn();
+
+// Mock the OpenAI client for Azure OpenAI usage
+jest.mock("openai", () => {
+  return jest.fn().mockImplementation(() => ({
+    chat: {
+      completions: {
+        create: mockCreateCompletion,
+      },
+    },
+  }));
+});
+
 // Mock config before requiring the orchestrator so it picks up test values
 jest.mock("../../utils/config", () => ({
-  LLM_API_KEY: "fake-key",
-  LLM_PROVIDER: "openai",
-  LLM_MODEL_ID: "gpt-4o",
-  AZURE_OPENAI_ENDPOINT: "",
-  AZURE_OPENAI_KEY: "",
+  AZURE_OPENAI_ENDPOINT: "https://test.openai.azure.com",
+  AZURE_OPENAI_KEY: "fake-key",
+  AZURE_OPENAI_DEPLOYMENT: "gpt-4o-mini",
+  AZURE_OPENAI_API_VERSION: "2024-02-01",
 }));
 
 // Mock the foundry client
@@ -32,25 +44,21 @@ test("generateScene returns parsed narrative and 3 choices when LLM returns vali
     sources: ["lore://fragment1"],
   });
 
-  // Mock OpenAI chat completion response where message.content contains a JSON string
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({
-      choices: [
-        {
-          message: {
-            content: JSON.stringify({
-              narrativeText: hundredWords,
-              choices: [
-                { id: "choice_1", text: "Do A" },
-                { id: "choice_2", text: "Do B" },
-                { id: "choice_3", text: "Do C" },
-              ],
-            }),
-          },
+  mockCreateCompletion.mockResolvedValue({
+    choices: [
+      {
+        message: {
+          content: JSON.stringify({
+            narrativeText: hundredWords,
+            choices: [
+              { id: "choice_1", text: "Do A" },
+              { id: "choice_2", text: "Do B" },
+              { id: "choice_3", text: "Do C" },
+            ],
+          }),
         },
-      ],
-    }),
+      },
+    ],
   });
 
   const result = await orchestrator.generateScene({
@@ -72,17 +80,14 @@ test("generateScene falls back when LLM returns invalid JSON", async () => {
     sources: [],
   });
 
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({
-      choices: [
-        {
-          message: {
-            content: "this is not json",
-          },
+  mockCreateCompletion.mockResolvedValue({
+    choices: [
+      {
+        message: {
+          content: "this is not json",
         },
-      ],
-    }),
+      },
+    ],
   });
 
   const result = await orchestrator.generateScene({
@@ -96,19 +101,18 @@ test("generateScene falls back when LLM returns invalid JSON", async () => {
   expect(result.choices).toEqual(fallback.choices);
 });
 
-test("generateScene falls back when LLM responds with non-OK HTTP", async () => {
+test("generateScene falls back when Azure OpenAI throws an error", async () => {
   foundryClient.queryKnowledge.mockResolvedValue({
     context: "ancient lore",
     sources: [],
   });
 
-  global.fetch = jest
-    .fn()
-    .mockResolvedValue({
-      ok: false,
-      status: 500,
-      text: async () => "server error",
-    });
+  mockCreateCompletion.mockRejectedValue(
+    Object.assign(new Error("Azure OpenAI failed"), {
+      response: { status: 500 },
+      message: "server error",
+    }),
+  );
 
   const result = await orchestrator.generateScene({
     currentScene: "A dark corridor",

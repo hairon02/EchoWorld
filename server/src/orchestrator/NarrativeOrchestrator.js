@@ -6,28 +6,44 @@
  * with the knowledge base to prevent hallucinations.
  */
 
+const OpenAI = require("openai");
 const foundryClient = require("./foundryClient");
 const {
-  LLM_API_KEY,
-  LLM_PROVIDER,
-  LLM_MODEL_ID,
   AZURE_OPENAI_ENDPOINT,
   AZURE_OPENAI_KEY,
+  AZURE_OPENAI_DEPLOYMENT,
+  AZURE_OPENAI_API_VERSION,
 } = require("../utils/config");
 
 class NarrativeOrchestrator {
   constructor() {
-    this.apiKey = String(LLM_API_KEY || "").trim();
-    this.provider = String(LLM_PROVIDER || "claude").toLowerCase();
-    this.modelId = String(LLM_MODEL_ID || "").trim();
     this.azureOpenAiEndpoint = String(AZURE_OPENAI_ENDPOINT || "").trim();
     this.azureOpenAiKey = String(AZURE_OPENAI_KEY || "").trim();
-    this.ready = Boolean(this.apiKey || this.azureOpenAiKey);
+    this.azureOpenAiDeployment = String(AZURE_OPENAI_DEPLOYMENT || "").trim();
+    this.azureOpenAiApiVersion = String(
+      AZURE_OPENAI_API_VERSION || "2024-02-01",
+    ).trim();
+    this.ready = Boolean(
+      this.azureOpenAiEndpoint &&
+      this.azureOpenAiKey &&
+      this.azureOpenAiDeployment,
+    );
 
     if (!this.ready) {
       console.error(
         "NarrativeOrchestrator: LLM credentials not set. Narrative generation disabled.",
       );
+    }
+
+    if (this.azureOpenAiEndpoint && this.azureOpenAiKey) {
+      this.azureOpenAiClient = new OpenAI({
+        apiKey: this.azureOpenAiKey,
+        baseURL: this.azureOpenAiEndpoint.replace(/\/+$/, ""),
+        defaultHeaders: {
+          "api-key": this.azureOpenAiKey,
+        },
+        apiVersion: this.azureOpenAiApiVersion,
+      });
     }
   }
 
@@ -80,7 +96,8 @@ class NarrativeOrchestrator {
       const response = await this._callLlm(prompt, userPrompt);
 
       // 4. Parse and validate response
-      const parsed = this._parseResponse(response);
+      const parsed =
+        typeof response === "string" ? this._parseResponse(response) : response;
 
       if (!this._isValidScene(parsed)) {
         console.error("Invalid scene generated, using fallback.");
@@ -157,97 +174,53 @@ class NarrativeOrchestrator {
   }
 
   async _callLlm(systemPrompt, userPrompt) {
-    if (this.provider === "claude") {
-      return this._callClaude(systemPrompt, userPrompt);
-    } else if (this.provider === "openai" || this.provider.startsWith("gpt-")) {
-      return this._callOpenAi(systemPrompt, userPrompt);
-    }
-    throw new Error(`Unsupported LLM provider: ${this.provider}`);
-  }
-
-  async _callOpenAi(systemPrompt, userPrompt) {
-    if (this.azureOpenAiEndpoint && this.azureOpenAiKey) {
-      return this._callAzureOpenAi(systemPrompt, userPrompt);
-    }
-
-    return this._callGpt4o(systemPrompt, userPrompt);
-  }
-
-  async _callClaude(systemPrompt, userPrompt) {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": this.apiKey,
-        "content-type": "application/json",
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: this.modelId || "claude-3-5-sonnet-20241022",
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }],
-      }),
+    return this._callOpenAi({
+      prompt: { system: systemPrompt, user: userPrompt },
+      maxTokens: 1024,
     });
-
-    if (!response.ok) {
-      throw new Error(`Claude API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.content[0].text;
   }
 
-  async _callGpt4o(systemPrompt, userPrompt) {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: this.modelId || "gpt-4o",
-        max_tokens: 1024,
+  async _callOpenAi({ prompt, maxTokens }) {
+    if (!this.azureOpenAiClient) {
+      throw new Error(
+        "Azure OpenAI is not configured. Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_KEY, and AZURE_OPENAI_DEPLOYMENT.",
+      );
+    }
+
+    return this._callGpt4o({ prompt, maxTokens });
+  }
+
+  async _callGpt4o({ prompt, maxTokens }) {
+    try {
+      const deployment = this.azureOpenAiDeployment || "gpt-4o-mini";
+      const response = await this.azureOpenAiClient.chat.completions.create({
+        model: deployment,
         messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
+          { role: "system", content: prompt.system },
+          { role: "user", content: prompt.user },
         ],
-      }),
-    });
+        max_tokens: maxTokens,
+      });
 
-    if (!response.ok) {
-      throw new Error(`GPT-4o API error: ${response.status}`);
+      const content = response.choices?.[0]?.message?.content;
+      if (typeof content !== "string") {
+        throw new Error("Azure OpenAI returned an unexpected response shape.");
+      }
+
+      return this._parseResponse(content);
+    } catch (error) {
+      const status = error?.response?.status;
+      const message = error?.message || String(error);
+
+      if (status === 429 || /quota/i.test(message)) {
+        throw new Error(`Azure OpenAI quota exceeded: ${message}`);
+      }
+      if (/deployment.*not found|model.*not found|404/i.test(message)) {
+        throw new Error(`Azure OpenAI deployment not found: ${message}`);
+      }
+
+      throw new Error(`Azure OpenAI error: ${message}`);
     }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
-  }
-
-  async _callAzureOpenAi(systemPrompt, userPrompt) {
-    const baseUrl = this.azureOpenAiEndpoint.replace(/\/+$/, "");
-    const deployment = this.modelId || "gpt-4o";
-    const url = `${baseUrl}/openai/deployments/${deployment}/chat/completions?api-version=2023-10-01-preview`;
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "api-key": this.azureOpenAiKey,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        max_tokens: 1024,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Azure OpenAI error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
   }
 
   _parseResponse(response) {

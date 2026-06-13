@@ -59,33 +59,28 @@ EchoWorld separates world knowledge (Foundry IQ) from the LLM used for narrative
 
 - `AZURE_FOUNDRY_ENDPOINT` — Foundry IQ endpoint (used for world/context queries)
 - `AZURE_FOUNDRY_KEY` — Key for Foundry IQ
-- `AZURE_OPENAI_ENDPOINT` — (optional) Azure OpenAI endpoint (if you want to use Azure for LLMs)
-- `AZURE_OPENAI_KEY` — (optional) Key for Azure OpenAI
-- `LLM_PROVIDER` — `openai` or `claude` (defaults to `claude`)
-- `LLM_API_KEY` — (optional) Public OpenAI API key if not using Azure
-- `LLM_MODEL_ID` — Model/deployment id (e.g. `gpt-4o`, `gpt-5-mini`, or an Azure deployment name)
+- `AZURE_OPENAI_ENDPOINT` — Azure OpenAI endpoint
+- `AZURE_OPENAI_KEY` — Key for Azure OpenAI
+- `AZURE_OPENAI_DEPLOYMENT` — Azure deployment name for the model (e.g. `gpt-4o-mini`)
+- `AZURE_OPENAI_API_VERSION` — Azure OpenAI API version (default: `2024-02-01`)
 
-Recommended quick setup (mixed mode):
+Recommended configuration:
 
 1. Use Foundry for world context:
 
 ```
 AZURE_FOUNDRY_ENDPOINT=https://your-foundry-instance.openai.azure.com
-AZURE_FOUNDRY_KEY=your-foundry-key
+AZURE_FOUNDRY_KEY=your-foundry-api-key
 ```
 
-2. Use Azure OpenAI for LLMs (preferred for enterprise):
+2. Use Azure OpenAI for narrative generation:
 
 ```
-LLM_PROVIDER=openai
 AZURE_OPENAI_ENDPOINT=https://your-azure-openai-resource.openai.azure.com
 AZURE_OPENAI_KEY=your-azure-openai-key
-LLM_MODEL_ID=gpt-5-mini
+AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini
+AZURE_OPENAI_API_VERSION=2024-02-01
 ```
-
-Or, use the public OpenAI API by setting `LLM_PROVIDER=openai` and `LLM_API_KEY`.
-
-The orchestrator injects Foundry context into the system prompt to avoid hallucinations.
 
 ## Testing
 
