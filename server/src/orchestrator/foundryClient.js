@@ -23,6 +23,11 @@ class FoundryClient {
       this.endpoint && this.key && typeof fetch === "function",
     );
 
+    console.log("[FoundryClient] Constructor - endpoint set:", !!this.endpoint);
+    console.log("[FoundryClient] Constructor - key set:", !!this.key);
+    console.log("[FoundryClient] Constructor - is ready:", this.ready);
+    console.log("[FoundryClient] Constructor - endpoint:", this.endpoint);
+
     if (!this.ready) {
       console.error(
         "FoundryClient initialization failed: missing endpoint/key or global fetch is unavailable.",
@@ -36,11 +41,14 @@ class FoundryClient {
    * @returns {Promise<{context: string, sources: string[]}>}
    */
   async queryKnowledge(query) {
+    console.log("[FoundryClient] queryKnowledge called, query:", query?.substring(0, 80) + (!!query?.substring ? "" : "..."));
     if (!this.ready) {
+      console.log("[FoundryClient] Not ready, returning empty context");
       return { context: "", sources: [] };
     }
 
     if (!query || typeof query !== "string") {
+      console.log("[FoundryClient] Invalid query, returning empty context");
       return { context: "", sources: [] };
     }
 
@@ -48,9 +56,11 @@ class FoundryClient {
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 
     const baseUrl = this.endpoint.replace(/\/+$/, "");
-    const url = baseUrl.endsWith("/query") ? baseUrl : `${baseUrl}/query`;
+    const baseQueryUrl = baseUrl.endsWith("/query") ? baseUrl : `${baseUrl}/query`;
+    const url = `${baseQueryUrl}?api-version=2024-05-01-preview`;
 
     try {
+      console.log("[FoundryClient] Fetching:", url);
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -69,6 +79,7 @@ class FoundryClient {
       }
 
       const payload = await response.json();
+      console.log("[FoundryClient] Response received, keys:", Object.keys(payload || {}));
       return this._parseKnowledgeResponse(payload);
     } catch (error) {
       const message =

@@ -4,6 +4,8 @@
  * and decision history. Never mutate session state outside of this module.
  */
 
+const NarrativeOrchestrator = require("../orchestrator/NarrativeOrchestrator");
+
 class GameEngine {
   constructor() {
     /** @type {Map<string, Object>} Active sessions indexed by sessionId */
@@ -13,19 +15,47 @@ class GameEngine {
   /**
    * Start a new game session for a player.
    * @param {string} playerName - The name of the player starting the game
-   * @returns {Object} Initial game session state with sessionId and first scene
+   * @returns {Promise<Object>} Initial game session state with sessionId and first scene
    */
-  startGame(playerName) {
+  async startGame(playerName) {
+    console.log("[GameEngine] startGame called for playerName:", playerName);
     const sessionId = this.#generateSessionId();
+
+    const fallbackScene = this.#getInitialScene();
+    let initialScene;
+
+    try {
+      console.log("[GameEngine] Calling NarrativeOrchestrator.generateScene for initial scene...");
+      const generated = await NarrativeOrchestrator.generateScene({
+        currentScene: "You begin your adventure in a mysterious world",
+        playerDecision: "start",
+        sessionHistory: [],
+      });
+
+      if (generated && generated.narrativeText && Array.isArray(generated.choices)) {
+        initialScene = {
+          id: "scene_opening",
+          narrativeText: generated.narrativeText,
+          choices: generated.choices,
+        };
+        console.log("[GameEngine] AI-generated initial scene received:", initialScene.narrativeText.substring(0, 60) + "...");
+      } else {
+        console.log("[GameEngine] generateScene returned invalid data, using fallback initial scene");
+        initialScene = fallbackScene;
+      }
+    } catch (error) {
+      console.error("[GameEngine] Error calling NarrativeOrchestrator for initial scene:", error.message);
+      initialScene = fallbackScene;
+    }
 
     const session = {
       sessionId,
       playerName,
-      currentScene: this.#getInitialScene(),
+      currentScene: initialScene,
       history: [
         {
-          sceneId: this.#getInitialScene().id,
-          narrativeText: this.#getInitialScene().narrativeText,
+          sceneId: initialScene.id,
+          narrativeText: initialScene.narrativeText,
           timestamp: Date.now(),
         },
       ],
@@ -41,21 +71,24 @@ class GameEngine {
    * Record a player decision and advance to the next scene.
    * @param {string} sessionId - The session identifier
    * @param {string} choiceId - The id of the choice selected
-   * @returns {Object} Updated session state with new scene
+   * @returns {Promise<Object>} Updated session state with new scene
    * @throws {Error} If session not found or choice is invalid
    */
-  makeDecision(sessionId, choiceId) {
+  async makeDecision(sessionId, choiceId) {
+    console.log(`[GameEngine] makeDecision called for session ${sessionId}, choiceId ${choiceId}`);
     const session = this.sessions.get(sessionId);
 
     if (!session) {
       throw new Error(`Session ${sessionId} not found`);
     }
+    console.log("[GameEngine] Found session:", sessionId);
 
     const choice = session.currentScene.choices.find((c) => c.id === choiceId);
 
     if (!choice) {
       throw new Error(`Choice ${choiceId} not found in current scene`);
     }
+    console.log(`[GameEngine] Found choice: "${choice.text}" (${choiceId})`);
 
     session.decisions.push({
       choiceId,
@@ -64,7 +97,39 @@ class GameEngine {
       timestamp: Date.now(),
     });
 
-    const nextScene = this.#getNextScene(choiceId);
+    // Build session history for the orchestrator
+    const sessionHistory = session.history.map((h) => ({
+      sceneId: h.sceneId,
+      narrative: h.narrativeText,
+    }));
+
+    // Try AI generation, fallback to hardcoded sceneMap
+    let nextScene;
+    try {
+      console.log("[GameEngine] Calling NarrativeOrchestrator.generateScene for next scene...");
+      const generated = await NarrativeOrchestrator.generateScene({
+        currentScene: session.currentScene.narrativeText,
+        playerDecision: choice.text,
+        sessionHistory,
+      });
+
+      if (generated && generated.narrativeText && Array.isArray(generated.choices) && generated.choices.length === 3) {
+        nextScene = {
+          id: `scene_${Date.now()}`,
+          narrativeText: generated.narrativeText,
+          choices: generated.choices,
+        };
+        console.log("[GameEngine] AI-generated next scene received:", nextScene.narrativeText.substring(0, 60) + "...");
+      } else {
+        console.log("[GameEngine] generateScene returned invalid data, falling back to hardcoded scene");
+        nextScene = this.#getNextScene(choiceId);
+      }
+    } catch (error) {
+      console.error("[GameEngine] Error calling NarrativeOrchestrator for next scene:", error.message);
+      nextScene = this.#getNextScene(choiceId);
+    }
+
+    console.log(`[GameEngine] Next scene resolved to: "${nextScene.id}" — ${nextScene.narrativeText.substring(0, 50)}...`);
     session.currentScene = nextScene;
 
     session.history.push({
@@ -88,6 +153,7 @@ class GameEngine {
     if (!session) {
       throw new Error(`Session ${sessionId} not found`);
     }
+    console.log(`[GameEngine] getState returned session ${sessionId} with scene: ${session.currentScene.id}`);
 
     return session;
   }

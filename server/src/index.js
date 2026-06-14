@@ -6,6 +6,9 @@ const apiRouter = require("./routes");
 const config = require("./utils/config");
 const GameEngine = require("./engine/GameEngine");
 const Session = require("./db/Session");
+const NarrativeOrchestrator = require("./orchestrator/NarrativeOrchestrator");
+
+console.log("[server] index.js loaded");
 
 const app = express();
 const server = http.createServer(app);
@@ -27,15 +30,18 @@ io.on("connection", (socket) => {
    * Emits: "game:scene" with initial scene data
    */
   socket.on("game:start", async (data) => {
+    console.log("[server] game:start event received, data:", JSON.stringify(data, null, 2));
     try {
       const { playerName } = data;
 
       if (!playerName || typeof playerName !== "string") {
+        console.log("[server] Invalid playerName, aborting");
         socket.emit("error", { message: "Invalid playerName" });
         return;
       }
 
-      const session = GameEngine.startGame(playerName);
+      const session = await GameEngine.startGame(playerName);
+      console.log("[server] GameEngine.startGame returned:", JSON.stringify(session, null, 2));
       socket.join(session.sessionId);
 
       socket.emit("game:scene", {
@@ -43,6 +49,7 @@ io.on("connection", (socket) => {
         scene: session.currentScene,
         history: session.history,
       });
+      console.log("[server] Emitted game:scene to client", session.sessionId);
 
       console.log(
         `Game started for ${playerName} with session ${session.sessionId}`,
@@ -59,15 +66,21 @@ io.on("connection", (socket) => {
    * Emits: "game:scene" with updated scene or "error" if invalid
    */
   socket.on("game:choice", async (data) => {
+    console.log("[server] game:choice event received, data:", JSON.stringify(data, null, 2));
     try {
       const { sessionId, choiceId } = data;
 
       if (!sessionId || !choiceId) {
+        console.log("[server] Invalid sessionId or choiceId, aborting");
         socket.emit("error", { message: "Invalid sessionId or choiceId" });
         return;
       }
 
-      const updatedSession = GameEngine.makeDecision(sessionId, choiceId);
+      const beforeState = GameEngine.getState(sessionId);
+      console.log("[server] Session state BEFORE makeDecision:", JSON.stringify(beforeState, null, 2));
+
+      const updatedSession = await GameEngine.makeDecision(sessionId, choiceId);
+      console.log("[server] GameEngine.makeDecision returned:", JSON.stringify(updatedSession, null, 2));
 
       socket.emit("game:scene", {
         sessionId: updatedSession.sessionId,
@@ -75,6 +88,7 @@ io.on("connection", (socket) => {
         history: updatedSession.history,
         decisions: updatedSession.decisions,
       });
+      console.log("[server] Emitted game:scene to client after choice", choiceId);
 
       console.log(
         `Choice ${choiceId} made in session ${sessionId} by ${updatedSession.playerName}`,

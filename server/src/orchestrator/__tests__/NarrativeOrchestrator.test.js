@@ -2,25 +2,23 @@
  * @jest-environment node
  */
 
-const mockCreateCompletion = jest.fn();
+const mockGenerateContent = jest.fn();
 
-// Mock the OpenAI client for Azure OpenAI usage
-jest.mock("openai", () => {
-  return jest.fn().mockImplementation(() => ({
-    chat: {
-      completions: {
-        create: mockCreateCompletion,
-      },
-    },
-  }));
+// Mock the Google Generative AI client
+jest.mock("@google/generative-ai", () => {
+  return {
+    GoogleGenerativeAI: jest.fn().mockImplementation(() => ({
+      getGenerativeModel: jest.fn().mockImplementation(() => ({
+        generateContent: mockGenerateContent,
+      })),
+    })),
+  };
 });
 
 // Mock config before requiring the orchestrator so it picks up test values
 jest.mock("../../utils/config", () => ({
-  AZURE_OPENAI_ENDPOINT: "https://test.openai.azure.com",
-  AZURE_OPENAI_KEY: "fake-key",
-  AZURE_OPENAI_DEPLOYMENT: "gpt-4o-mini",
-  AZURE_OPENAI_API_VERSION: "2024-02-01",
+  GEMINI_API_KEY: "fake-gemini-key",
+  GEMINI_MODEL: "gemini-3.5-flash",
 }));
 
 // Mock the foundry client
@@ -29,14 +27,14 @@ jest.mock("../foundryClient", () => ({
 }));
 
 const foundryClient = require("../foundryClient");
+// Re-require to ensure mocks are applied
 const orchestrator = require("../NarrativeOrchestrator");
 
 beforeEach(() => {
   jest.resetAllMocks();
-  delete global.fetch;
 });
 
-test("generateScene returns parsed narrative and 3 choices when LLM returns valid JSON", async () => {
+test("generateScene returns parsed narrative and 3 choices when Gemini returns valid JSON", async () => {
   const hundredWords = Array(100).fill("word").join(" ");
 
   foundryClient.queryKnowledge.mockResolvedValue({
@@ -44,21 +42,17 @@ test("generateScene returns parsed narrative and 3 choices when LLM returns vali
     sources: ["lore://fragment1"],
   });
 
-  mockCreateCompletion.mockResolvedValue({
-    choices: [
-      {
-        message: {
-          content: JSON.stringify({
-            narrativeText: hundredWords,
-            choices: [
-              { id: "choice_1", text: "Do A" },
-              { id: "choice_2", text: "Do B" },
-              { id: "choice_3", text: "Do C" },
-            ],
-          }),
-        },
-      },
-    ],
+  mockGenerateContent.mockResolvedValue({
+    response: {
+      text: () => JSON.stringify({
+        narrativeText: hundredWords,
+        choices: [
+          { id: "choice_1", text: "Do A" },
+          { id: "choice_2", text: "Do B" },
+          { id: "choice_3", text: "Do C" },
+        ],
+      }),
+    },
   });
 
   const result = await orchestrator.generateScene({
@@ -74,20 +68,16 @@ test("generateScene returns parsed narrative and 3 choices when LLM returns vali
   expect(result.sources).toEqual(["lore://fragment1"]);
 });
 
-test("generateScene falls back when LLM returns invalid JSON", async () => {
+test("generateScene falls back when Gemini returns invalid JSON", async () => {
   foundryClient.queryKnowledge.mockResolvedValue({
     context: "ancient lore",
     sources: [],
   });
 
-  mockCreateCompletion.mockResolvedValue({
-    choices: [
-      {
-        message: {
-          content: "this is not json",
-        },
-      },
-    ],
+  mockGenerateContent.mockResolvedValue({
+    response: {
+      text: () => "this is not json",
+    },
   });
 
   const result = await orchestrator.generateScene({
@@ -101,18 +91,13 @@ test("generateScene falls back when LLM returns invalid JSON", async () => {
   expect(result.choices).toEqual(fallback.choices);
 });
 
-test("generateScene falls back when Azure OpenAI throws an error", async () => {
+test("generateScene falls back when Gemini throws an error", async () => {
   foundryClient.queryKnowledge.mockResolvedValue({
     context: "ancient lore",
     sources: [],
   });
 
-  mockCreateCompletion.mockRejectedValue(
-    Object.assign(new Error("Azure OpenAI failed"), {
-      response: { status: 500 },
-      message: "server error",
-    }),
-  );
+  mockGenerateContent.mockRejectedValue(new Error("Gemini API failed"));
 
   const result = await orchestrator.generateScene({
     currentScene: "A dark corridor",

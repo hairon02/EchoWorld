@@ -1,25 +1,24 @@
 require("dotenv").config();
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3001;
 const MONGODB_URI =
   process.env.NODE_ENV === "test"
     ? process.env.TEST_MONGODB_URI
     : process.env.MONGODB_URI;
+
+// Azure Foundry IQ (World Knowledge Base)
 const AZURE_FOUNDRY_ENDPOINT = process.env.AZURE_FOUNDRY_ENDPOINT;
 const AZURE_FOUNDRY_KEY = process.env.AZURE_FOUNDRY_KEY;
-const AZURE_OPENAI_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
-const AZURE_OPENAI_KEY = process.env.AZURE_OPENAI_KEY;
-const AZURE_OPENAI_DEPLOYMENT = process.env.AZURE_OPENAI_DEPLOYMENT;
-const AZURE_OPENAI_API_VERSION =
-  process.env.AZURE_OPENAI_API_VERSION || "2024-02-01";
+
+// Gemini API (LLM)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 
 module.exports = {
   PORT,
   MONGODB_URI,
   AZURE_FOUNDRY_ENDPOINT,
   AZURE_FOUNDRY_KEY,
-  AZURE_OPENAI_ENDPOINT,
-  AZURE_OPENAI_KEY,
-  AZURE_OPENAI_DEPLOYMENT,
-  AZURE_OPENAI_API_VERSION,
+  GEMINI_API_KEY,
+  GEMINI_MODEL,
 };
