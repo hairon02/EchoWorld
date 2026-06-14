@@ -10,15 +10,15 @@ const MONGODB_URI =
 const AZURE_FOUNDRY_ENDPOINT = process.env.AZURE_FOUNDRY_ENDPOINT;
 const AZURE_FOUNDRY_KEY = process.env.AZURE_FOUNDRY_KEY;
 
-// Gemini API (LLM)
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+// NVIDIA NIM (LLM)
+const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY;
+const NVIDIA_MODEL = process.env.NVIDIA_MODEL || "meta/llama-3.3-70b-instruct";
 
 module.exports = {
   PORT,
   MONGODB_URI,
   AZURE_FOUNDRY_ENDPOINT,
   AZURE_FOUNDRY_KEY,
-  GEMINI_API_KEY,
-  GEMINI_MODEL,
+  NVIDIA_API_KEY,
+  NVIDIA_MODEL,
 };

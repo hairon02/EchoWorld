@@ -2,23 +2,25 @@
  * @jest-environment node
  */
 
-const mockGenerateContent = jest.fn();
+const mockCreateChatCompletion = jest.fn();
 
-// Mock the Google Generative AI client
-jest.mock("@google/generative-ai", () => {
+// Mock the OpenAI client
+jest.mock("openai", () => {
   return {
-    GoogleGenerativeAI: jest.fn().mockImplementation(() => ({
-      getGenerativeModel: jest.fn().mockImplementation(() => ({
-        generateContent: mockGenerateContent,
-      })),
+    OpenAI: jest.fn().mockImplementation(() => ({
+      chat: {
+        completions: {
+          create: mockCreateChatCompletion,
+        },
+      },
     })),
   };
 });
 
 // Mock config before requiring the orchestrator so it picks up test values
 jest.mock("../../utils/config", () => ({
-  GEMINI_API_KEY: "fake-gemini-key",
-  GEMINI_MODEL: "gemini-3.5-flash",
+  NVIDIA_API_KEY: "fake-nvidia-key",
+  NVIDIA_MODEL: "meta/llama-3.3-70b-instruct",
 }));
 
 // Mock the foundry client
@@ -31,10 +33,10 @@ const foundryClient = require("../foundryClient");
 const orchestrator = require("../NarrativeOrchestrator");
 
 beforeEach(() => {
-  jest.resetAllMocks();
+  jest.clearAllMocks();
 });
 
-test("generateScene returns parsed narrative and 3 choices when Gemini returns valid JSON", async () => {
+test("generateScene returns parsed narrative and 3 choices when LLM returns valid JSON", async () => {
   const hundredWords = Array(100).fill("word").join(" ");
 
   foundryClient.queryKnowledge.mockResolvedValue({
@@ -42,17 +44,21 @@ test("generateScene returns parsed narrative and 3 choices when Gemini returns v
     sources: ["lore://fragment1"],
   });
 
-  mockGenerateContent.mockResolvedValue({
-    response: {
-      text: () => JSON.stringify({
-        narrativeText: hundredWords,
-        choices: [
-          { id: "choice_1", text: "Do A" },
-          { id: "choice_2", text: "Do B" },
-          { id: "choice_3", text: "Do C" },
-        ],
-      }),
-    },
+  mockCreateChatCompletion.mockResolvedValue({
+    choices: [
+      {
+        message: {
+          content: JSON.stringify({
+            narrativeText: hundredWords,
+            choices: [
+              { id: "choice_1", text: "Do A" },
+              { id: "choice_2", text: "Do B" },
+              { id: "choice_3", text: "Do C" },
+            ],
+          }),
+        },
+      },
+    ],
   });
 
   const result = await orchestrator.generateScene({
@@ -68,16 +74,20 @@ test("generateScene returns parsed narrative and 3 choices when Gemini returns v
   expect(result.sources).toEqual(["lore://fragment1"]);
 });
 
-test("generateScene falls back when Gemini returns invalid JSON", async () => {
+test("generateScene falls back when LLM returns invalid JSON", async () => {
   foundryClient.queryKnowledge.mockResolvedValue({
     context: "ancient lore",
     sources: [],
   });
 
-  mockGenerateContent.mockResolvedValue({
-    response: {
-      text: () => "this is not json",
-    },
+  mockCreateChatCompletion.mockResolvedValue({
+    choices: [
+      {
+        message: {
+          content: "this is not json",
+        },
+      },
+    ],
   });
 
   const result = await orchestrator.generateScene({
@@ -91,13 +101,13 @@ test("generateScene falls back when Gemini returns invalid JSON", async () => {
   expect(result.choices).toEqual(fallback.choices);
 });
 
-test("generateScene falls back when Gemini throws an error", async () => {
+test("generateScene falls back when LLM throws an error", async () => {
   foundryClient.queryKnowledge.mockResolvedValue({
     context: "ancient lore",
     sources: [],
   });
 
-  mockGenerateContent.mockRejectedValue(new Error("Gemini API failed"));
+  mockCreateChatCompletion.mockRejectedValue(new Error("NVIDIA API failed"));
 
   const result = await orchestrator.generateScene({
     currentScene: "A dark corridor",

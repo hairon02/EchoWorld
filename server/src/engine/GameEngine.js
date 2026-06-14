@@ -51,6 +51,7 @@ class GameEngine {
     const session = {
       sessionId,
       playerName,
+      sceneCount: 1,
       currentScene: initialScene,
       history: [
         {
@@ -97,23 +98,31 @@ class GameEngine {
       timestamp: Date.now(),
     });
 
+    session.sceneCount = (session.sceneCount || 1) + 1;
+    const isFinalScene = session.sceneCount >= 10;
+
     // Build session history for the orchestrator
-    const sessionHistory = session.history.map((h) => ({
-      sceneId: h.sceneId,
-      narrative: h.narrativeText,
+    const sessionHistory = session.decisions.map((dec, idx) => ({
+      choice: dec.choiceText,
+      narrative: session.history[idx + 1] ? session.history[idx + 1].narrativeText : "",
     }));
 
     // Try AI generation, fallback to hardcoded sceneMap
     let nextScene;
     try {
-      console.log("[GameEngine] Calling NarrativeOrchestrator.generateScene for next scene...");
+      console.log(`[GameEngine] Calling NarrativeOrchestrator.generateScene for scene ${session.sceneCount} (isFinalScene: ${isFinalScene})...`);
       const generated = await NarrativeOrchestrator.generateScene({
         currentScene: session.currentScene.narrativeText,
         playerDecision: choice.text,
         sessionHistory,
+        isFinalScene,
       });
 
-      if (generated && generated.narrativeText && Array.isArray(generated.choices) && generated.choices.length === 3) {
+      const isValid = isFinalScene
+        ? (generated && generated.narrativeText && Array.isArray(generated.choices) && generated.choices.length === 0)
+        : (generated && generated.narrativeText && Array.isArray(generated.choices) && generated.choices.length === 3);
+
+      if (isValid) {
         nextScene = {
           id: `scene_${Date.now()}`,
           narrativeText: generated.narrativeText,
@@ -122,11 +131,11 @@ class GameEngine {
         console.log("[GameEngine] AI-generated next scene received:", nextScene.narrativeText.substring(0, 60) + "...");
       } else {
         console.log("[GameEngine] generateScene returned invalid data, falling back to hardcoded scene");
-        nextScene = this.#getNextScene(choiceId);
+        nextScene = isFinalScene ? this.#getFinalFallbackScene() : this.#getNextScene(choiceId);
       }
     } catch (error) {
       console.error("[GameEngine] Error calling NarrativeOrchestrator for next scene:", error.message);
-      nextScene = this.#getNextScene(choiceId);
+      nextScene = isFinalScene ? this.#getFinalFallbackScene() : this.#getNextScene(choiceId);
     }
 
     console.log(`[GameEngine] Next scene resolved to: "${nextScene.id}" — ${nextScene.narrativeText.substring(0, 50)}...`);
@@ -271,6 +280,19 @@ class GameEngine {
     };
 
     return sceneMap[choiceId] || this.#getInitialScene();
+  }
+
+  /**
+   * Get the fallback final scene when generation fails or is ending.
+   * @private
+   * @returns {Object} Final scene object
+   */
+  #getFinalFallbackScene() {
+    return {
+      id: "scene_final_fallback",
+      narrativeText: "Your journey comes to an end. The echoes of your choices fade into the history of EchoWorld. The adventure is complete.",
+      choices: [],
+    };
   }
 }
 
