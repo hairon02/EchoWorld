@@ -36,29 +36,34 @@ export default function ChoicePanel({
       {choices.length === 0 ? (
         <p style={{ color: "#8a8090" }}>No choices available yet.</p>
       ) : (
-        choices.map((choice) => (
-          <button
-            key={choice}
-            onClick={() => {
-              if (playChoiceClick) playChoiceClick();
-              onChoose(choice);
-            }}
-            style={buttonStyle}
-            onMouseEnter={() => {
-              if (playChoiceHover) playChoiceHover();
-            }}
-            onMouseOver={(event) => {
-              event.currentTarget.style.borderColor = "#c9a84c";
-              event.currentTarget.style.color = "#c9a84c";
-            }}
-            onMouseOut={(event) => {
-              event.currentTarget.style.borderColor = "#2d2d4a";
-              event.currentTarget.style.color = "#e8e0d0";
-            }}
-          >
-            {choice}
-          </button>
-        ))
+        choices.map((choice, index) => {
+          const text = typeof choice === 'string' ? choice : choice.text;
+          const key = typeof choice === 'string' ? `${choice}-${index}` : choice.id;
+          
+          return (
+            <button
+              key={key}
+              onClick={() => {
+                if (playChoiceClick) playChoiceClick();
+                onChoose(choice);
+              }}
+              style={buttonStyle}
+              onMouseEnter={() => {
+                if (playChoiceHover) playChoiceHover();
+              }}
+              onMouseOver={(event) => {
+                event.currentTarget.style.borderColor = "#c9a84c";
+                event.currentTarget.style.color = "#c9a84c";
+              }}
+              onMouseOut={(event) => {
+                event.currentTarget.style.borderColor = "#2d2d4a";
+                event.currentTarget.style.color = "#e8e0d0";
+              }}
+            >
+              {text}
+            </button>
+          );
+        })
       )}
     </div>
   );

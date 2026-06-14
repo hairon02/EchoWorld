@@ -4,8 +4,8 @@ import ParticleBackground from "../components/ParticleBackground";
 import NarrativeBox from "../components/NarrativeBox";
 import ChoicePanel from "../components/ChoicePanel";
 import useSocket from "../hooks/useSocket";
-
 export default function GameScreen({
+  socket,
   playerName = "Wanderer",
   onEnd,
   playChoiceHover,
@@ -14,17 +14,11 @@ export default function GameScreen({
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [history, setHistory] = useState([]);
-  const [story, setStory] = useState(
-    "The story begins as your party enters the forgotten city...",
-  );
-  const [choices, setChoices] = useState([
-    "Explore the plaza",
-    "Follow the river",
-    "Rest at the inn",
-  ]);
+  const [story, setStory] = useState("Cargando historia...");
+  const [choices, setChoices] = useState([]);
   const [sceneIndex, setSceneIndex] = useState(1);
-
-  const { socket } = useSocket();
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [summary, setSummary] = useState(null);
 
   useEffect(() => {
     if (!socket || !onEnd) return undefined;
@@ -34,18 +28,44 @@ export default function GameScreen({
     };
 
     const handleNewScene = (payload) => {
+      console.log("[GameScreen] received game:scene payload:", payload);
       if (playSceneTransition) playSceneTransition();
-      if (payload?.story) setStory(payload.story);
-      if (payload?.choices) setChoices(payload.choices);
-      if (payload?.sceneIndex) setSceneIndex(payload.sceneIndex);
+      if (payload?.sessionId) setCurrentSessionId(payload.sessionId);
+      if (payload?.scene?.narrativeText) setStory(payload.scene.narrativeText);
+      if (payload?.scene?.choices) {
+        setChoices(payload.scene.choices);
+        if (payload.scene.choices.length === 0) {
+          console.log("[GameScreen] No choices available. Auto-emitting game:end.");
+          socket.emit("game:end", { sessionId: payload.sessionId });
+        }
+      }
+      
+      if (payload?.decisions) {
+        const mappedHistory = payload.decisions.map((dec, idx) => ({
+          scene: idx + 1,
+          choice: dec.choiceText,
+        }));
+        setHistory(mappedHistory);
+        setSceneIndex(payload.decisions.length + 1);
+      } else {
+        setHistory([]);
+        setSceneIndex(1);
+      }
+    };
+
+    const handleServerSummary = (data) => {
+      console.log("[GameScreen] received game:summary:", data);
+      setSummary(data);
     };
 
     socket.on("game:end", handleServerEnd);
-    socket.on("scene:update", handleNewScene);
+    socket.on("game:scene", handleNewScene);
+    socket.on("game:summary", handleServerSummary);
 
     return () => {
       socket.off("game:end", handleServerEnd);
-      socket.off("scene:update", handleNewScene);
+      socket.off("game:scene", handleNewScene);
+      socket.off("game:summary", handleServerSummary);
     };
   }, [socket, onEnd, playSceneTransition]);
 
@@ -53,10 +73,31 @@ export default function GameScreen({
 
   const handleChoice = (choice) => {
     if (playChoiceClick) playChoiceClick();
-    setHistory((prev) => [...prev, { scene: prev.length + 1, choice }]);
-    setSceneIndex((prev) => prev + 1);
-    setStory(`You chose: ${choice}. The world shifts around you.`);
-    setChoices(["Press forward", "Search for clues", "Call for help"]);
+
+    const choiceId = typeof choice === 'string' ? choice : choice.id;
+
+    if (socket && currentSessionId && choiceId) {
+      console.log("[GameScreen] Emitting game:choice:", { sessionId: currentSessionId, choiceId });
+      socket.emit("game:choice", { sessionId: currentSessionId, choiceId });
+      
+      // Muestra un estado de carga mientras se genera el siguiente fragmento de historia
+      setStory("Cargando historia...");
+      setChoices([]);
+    } else {
+      console.warn("[GameScreen] Cannot emit choice, missing socket, sessionId or choiceId", {
+        hasSocket: !!socket,
+        currentSessionId,
+        choiceId
+      });
+    }
+  };
+
+  const handleEndAdventure = () => {
+    if (socket && currentSessionId) {
+      console.log("[GameScreen] Emitting game:end for session:", currentSessionId);
+      socket.emit("game:end", { sessionId: currentSessionId });
+    }
+    onEnd();
   };
 
   const handleToggleSidebar = () => setIsSidebarOpen((current) => !current);
@@ -145,7 +186,7 @@ export default function GameScreen({
               <div>
                 <button
                   type="button"
-                  onClick={onEnd}
+                  onClick={handleEndAdventure}
                   className="rounded-full border border-echo-red px-4 py-2 text-sm text-echo-red transition hover:bg-echo-red hover:text-white"
                 >
                   End Adventure
@@ -187,7 +228,40 @@ export default function GameScreen({
               </AnimatePresence>
 
               <div className="mt-auto">
-                <ChoicePanel choices={choices} onChoose={handleChoice} />
+                {choices.length === 0 ? (
+                  <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+                    <button
+                      type="button"
+                      onClick={() => onEnd(summary)}
+                      style={{
+                        backgroundColor: "#c9a84c",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "14px 40px",
+                        color: "#0a0a0f",
+                        fontSize: "1.1rem",
+                        fontWeight: "bold",
+                        cursor: "pointer",
+                        fontFamily: "Cinzel, Georgia, serif",
+                        letterSpacing: "1.5px",
+                        boxShadow: "0 10px 25px rgba(201, 168, 76, 0.25)",
+                        transition: "all 0.3s ease",
+                      }}
+                      onMouseEnter={(event) => {
+                        event.currentTarget.style.transform = "translateY(-2px)";
+                        event.currentTarget.style.boxShadow = "0 15px 30px rgba(201, 168, 76, 0.4)";
+                      }}
+                      onMouseLeave={(event) => {
+                        event.currentTarget.style.transform = "translateY(0)";
+                        event.currentTarget.style.boxShadow = "0 10px 25px rgba(201, 168, 76, 0.25)";
+                      }}
+                    >
+                      Conclude Journey
+                    </button>
+                  </div>
+                ) : (
+                  <ChoicePanel choices={choices} onChoose={handleChoice} />
+                )}
               </div>
             </div>
           </div>

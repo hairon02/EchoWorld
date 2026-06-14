@@ -26,7 +26,7 @@ export default function useAudio() {
     const clamped = Math.max(0, Math.min(1, value));
     setMasterVolumeState(clamped);
     if (ambientRef.current) {
-      ambientRef.current.volume = clamped * 0.7;
+      ambientRef.current.volume = clamped * 2;
     }
   };
 
