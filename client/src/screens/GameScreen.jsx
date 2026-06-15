@@ -19,6 +19,7 @@ export default function GameScreen({
   const [sceneIndex, setSceneIndex] = useState(1);
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [summary, setSummary] = useState(null);
+  const [showChoices, setShowChoices] = useState(false);
 
   useEffect(() => {
     if (!socket || !onEnd) return undefined;
@@ -29,6 +30,7 @@ export default function GameScreen({
 
     const handleNewScene = (payload) => {
       console.log("[GameScreen] received game:scene payload:", payload);
+      setShowChoices(false);
       if (playSceneTransition) playSceneTransition();
       if (payload?.sessionId) setCurrentSessionId(payload.sessionId);
       if (payload?.scene?.narrativeText) setStory(payload.scene.narrativeText);
@@ -83,6 +85,7 @@ export default function GameScreen({
       // Muestra un estado de carga mientras se genera el siguiente fragmento de historia
       setStory("Loading...");
       setChoices([]);
+      setShowChoices(false);
     } else {
       console.warn("[GameScreen] Cannot emit choice, missing socket, sessionId or choiceId", {
         hasSocket: !!socket,
@@ -215,7 +218,10 @@ export default function GameScreen({
                       </span>
                     </div>
 
-                    <NarrativeBox text={story} />
+                    <NarrativeBox 
+                      text={story} 
+                      onTypingComplete={() => setShowChoices(true)} 
+                    />
 
                     <div className="mt-6 flex items-center justify-center text-center text-sm uppercase text-echo-muted">
                       <span className="relative px-4">
@@ -229,38 +235,44 @@ export default function GameScreen({
 
               <div className="mt-auto">
                 {choices.length === 0 ? (
-                  <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-                    <button
-                      type="button"
-                      onClick={() => onEnd(summary)}
-                      style={{
-                        backgroundColor: "#c9a84c",
-                        border: "none",
-                        borderRadius: "8px",
-                        padding: "14px 40px",
-                        color: "#0a0a0f",
-                        fontSize: "1.1rem",
-                        fontWeight: "bold",
-                        cursor: "pointer",
-                        fontFamily: "Cinzel, Georgia, serif",
-                        letterSpacing: "1.5px",
-                        boxShadow: "0 10px 25px rgba(201, 168, 76, 0.25)",
-                        transition: "all 0.3s ease",
-                      }}
-                      onMouseEnter={(event) => {
-                        event.currentTarget.style.transform = "translateY(-2px)";
-                        event.currentTarget.style.boxShadow = "0 15px 30px rgba(201, 168, 76, 0.4)";
-                      }}
-                      onMouseLeave={(event) => {
-                        event.currentTarget.style.transform = "translateY(0)";
-                        event.currentTarget.style.boxShadow = "0 10px 25px rgba(201, 168, 76, 0.25)";
-                      }}
+                  showChoices && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      style={{ display: "flex", justifyContent: "center", width: "100%" }}
                     >
-                      Conclude Journey
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => onEnd(summary)}
+                        style={{
+                          backgroundColor: "#c9a84c",
+                          border: "none",
+                          borderRadius: "8px",
+                          padding: "14px 40px",
+                          color: "#0a0a0f",
+                          fontSize: "1.1rem",
+                          fontWeight: "bold",
+                          cursor: "pointer",
+                          fontFamily: "Cinzel, Georgia, serif",
+                          letterSpacing: "1.5px",
+                          boxShadow: "0 10px 25px rgba(201, 168, 76, 0.25)",
+                          transition: "all 0.3s ease",
+                        }}
+                        onMouseEnter={(event) => {
+                          event.currentTarget.style.transform = "translateY(-2px)";
+                          event.currentTarget.style.boxShadow = "0 15px 30px rgba(201, 168, 76, 0.4)";
+                        }}
+                        onMouseLeave={(event) => {
+                          event.currentTarget.style.transform = "translateY(0)";
+                          event.currentTarget.style.boxShadow = "0 10px 25px rgba(201, 168, 76, 0.25)";
+                        }}
+                      >
+                        Conclude Journey
+                      </button>
+                    </motion.div>
+                  )
                 ) : (
-                  <ChoicePanel choices={choices} onChoose={handleChoice} />
+                  <ChoicePanel choices={choices} onChoose={handleChoice} isVisible={showChoices} />
                 )}
               </div>
             </div>

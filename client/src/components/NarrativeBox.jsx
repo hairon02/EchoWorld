@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 
-export default function NarrativeBox({ text, isLoading }) {
+export default function NarrativeBox({ text, isLoading, onTypingComplete }) {
   const [displayedText, setDisplayedText] = useState("");
   const intervalRef = useRef(null);
 
@@ -19,6 +19,7 @@ export default function NarrativeBox({ text, isLoading }) {
       setDisplayedText(text.substring(0, index));
       if (index >= text.length) {
         clearInterval(intervalRef.current);
+        if (onTypingComplete) onTypingComplete();
       }
     }, 30);
 
