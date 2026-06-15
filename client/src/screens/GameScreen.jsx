@@ -14,7 +14,7 @@ export default function GameScreen({
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [history, setHistory] = useState([]);
-  const [story, setStory] = useState("Cargando historia...");
+  const [story, setStory] = useState("Loading...");
   const [choices, setChoices] = useState([]);
   const [sceneIndex, setSceneIndex] = useState(1);
   const [currentSessionId, setCurrentSessionId] = useState(null);
@@ -81,7 +81,7 @@ export default function GameScreen({
       socket.emit("game:choice", { sessionId: currentSessionId, choiceId });
       
       // Muestra un estado de carga mientras se genera el siguiente fragmento de historia
-      setStory("Cargando historia...");
+      setStory("Loading...");
       setChoices([]);
     } else {
       console.warn("[GameScreen] Cannot emit choice, missing socket, sessionId or choiceId", {

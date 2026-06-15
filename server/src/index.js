@@ -121,7 +121,11 @@ io.on("connection", (socket) => {
         playerName: session.playerName,
         startedAt: new Date(session.createdAt),
         endedAt,
-        decisions: session.decisions,
+        decisions: session.decisions.map((dec) => ({
+          sceneId: dec.fromSceneId,
+          choice: dec.choiceText,
+          timestamp: new Date(dec.timestamp),
+        })),
         status: "completed",
       };
 

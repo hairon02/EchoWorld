@@ -19,8 +19,9 @@ jest.mock("openai", () => {
 
 // Mock config before requiring the orchestrator so it picks up test values
 jest.mock("../../utils/config", () => ({
-  NVIDIA_API_KEY: "fake-nvidia-key",
-  NVIDIA_MODEL: "meta/llama-3.3-70b-instruct",
+  AZURE_OPENAI_ENDPOINT: "https://fake-endpoint.openai.azure.com",
+  AZURE_OPENAI_KEY: "fake-azure-key",
+  AZURE_OPENAI_DEPLOYMENT: "Llama-3.3-70B-Instruct",
 }));
 
 // Mock the foundry client

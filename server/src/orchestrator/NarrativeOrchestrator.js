@@ -2,36 +2,39 @@
  * NarrativeOrchestrator.js
  *
  * Orchestrates narrative generation by grounding LLM calls in
- * world lore from Foundry IQ. Uses Google Gemini for fast,
+ * world lore from Foundry IQ. Uses Azure OpenAI for fast,
  * immersive storytelling.
  */
 
 const { OpenAI } = require("openai");
 const foundryClient = require("./foundryClient");
 const {
-  NVIDIA_API_KEY,
-  NVIDIA_MODEL,
+  AZURE_OPENAI_ENDPOINT,
+  AZURE_OPENAI_KEY,
+  AZURE_OPENAI_DEPLOYMENT,
 } = require("../utils/config");
 
 class NarrativeOrchestrator {
   constructor() {
-    this.apiKey = String(NVIDIA_API_KEY || "").trim();
-    this.modelName = String(NVIDIA_MODEL || "meta/llama-3.3-70b-instruct").trim();
+    this.apiKey = String(AZURE_OPENAI_KEY || "").trim();
+    this.endpoint = String(AZURE_OPENAI_ENDPOINT || "").trim();
+    this.modelName = String(AZURE_OPENAI_DEPLOYMENT || "Llama-3.3-70B-Instruct").trim();
     
-    this.ready = Boolean(this.apiKey);
+    this.ready = Boolean(this.apiKey && this.endpoint);
 
-    console.log("[NarrativeOrchestrator] Constructor - NVIDIA key set:", !!this.apiKey);
-    console.log("[NarrativeOrchestrator] Constructor - NVIDIA model:", this.modelName);
+    console.log("[NarrativeOrchestrator] Constructor - Azure OpenAI key set:", !!this.apiKey);
+    console.log("[NarrativeOrchestrator] Constructor - Azure OpenAI endpoint set:", !!this.endpoint);
+    console.log("[NarrativeOrchestrator] Constructor - Azure OpenAI model:", this.modelName);
     console.log("[NarrativeOrchestrator] Constructor - is ready:", this.ready);
 
     if (!this.ready) {
       console.error(
-        "NarrativeOrchestrator: NVIDIA credentials not set. Narrative generation disabled.",
+        "NarrativeOrchestrator: Azure OpenAI credentials not set. Narrative generation disabled.",
       );
     } else {
       this.client = new OpenAI({
         apiKey: this.apiKey,
-        baseURL: "https://integrate.api.nvidia.com/v1",
+        baseURL: this.endpoint,
       });
     }
   }
@@ -157,7 +160,7 @@ class NarrativeOrchestrator {
     });
 
     const responseText = response.choices[0].message.content;
-    console.log("[NarrativeOrchestrator] NVIDIA raw response length:", responseText.length);
+    console.log("[NarrativeOrchestrator] Azure OpenAI raw response length:", responseText.length);
     
     return this._parseResponse(responseText);
   }

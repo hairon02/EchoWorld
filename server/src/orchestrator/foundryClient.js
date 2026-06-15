@@ -1,47 +1,43 @@
 /**
  * foundryClient.js
  *
- * A client for Azure Foundry IQ knowledge queries.
- * Migrated to OpenAI v1 chat completions format.
+ * A lightweight client for Azure AI Search queries to the EchoWorld knowledge base.
+ * Uses fetch to query the index directly.
  */
-const { OpenAI } = require("openai");
 const {
-  AZURE_FOUNDRY_ENDPOINT,
-  AZURE_FOUNDRY_KEY,
+  AZURE_SEARCH_ENDPOINT,
+  AZURE_SEARCH_KEY,
+  AZURE_SEARCH_INDEX,
 } = require("../utils/config");
 
 const DEFAULT_TIMEOUT_MS = 8000;
 
 class FoundryClient {
   constructor() {
-    this.endpoint = String(AZURE_FOUNDRY_ENDPOINT || "").trim();
-    this.key = String(AZURE_FOUNDRY_KEY || "").trim();
+    this.endpoint = String(AZURE_SEARCH_ENDPOINT || "").trim();
+    this.key = String(AZURE_SEARCH_KEY || "").trim();
+    this.index = String(AZURE_SEARCH_INDEX || "echoworld-kb").trim();
     this.timeoutMs = Number(
       process.env.AZURE_FOUNDRY_TIMEOUT_MS || DEFAULT_TIMEOUT_MS,
     );
     this.ready = Boolean(
-      this.endpoint && this.key
+      this.endpoint && this.key && typeof fetch === "function",
     );
 
     console.log("[FoundryClient] Constructor - endpoint set:", !!this.endpoint);
     console.log("[FoundryClient] Constructor - key set:", !!this.key);
+    console.log("[FoundryClient] Constructor - index set:", this.index);
     console.log("[FoundryClient] Constructor - is ready:", this.ready);
-    console.log("[FoundryClient] Constructor - endpoint:", this.endpoint);
 
     if (!this.ready) {
       console.error(
-        "FoundryClient initialization failed: missing endpoint or key.",
+        "FoundryClient initialization failed: missing search endpoint/key or global fetch is unavailable.",
       );
-    } else {
-      this.client = new OpenAI({
-        apiKey: this.key,
-        baseURL: this.endpoint + "/openai/v1",
-      });
     }
   }
 
   /**
-   * Query the Foundry knowledge base for relevant world context.
+   * Query the Azure AI Search index for relevant world context.
    * @param {string} query
    * @returns {Promise<{context: string, sources: string[]}>}
    */
@@ -60,18 +56,44 @@ class FoundryClient {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 
+    const baseUrl = this.endpoint.replace(/\/+$/, "") + "/";
+    const url = `${baseUrl}indexes/${this.index}/docs/search?api-version=2023-11-01`;
+
     try {
-      console.log("[FoundryClient] Querying chat completions baseURL:", this.endpoint + "/openai/v1");
-      const response = await this.client.chat.completions.create({
-        model: "echoworld-foundry",
-        messages: [{ role: "user", content: query }],
-      }, {
+      console.log("[FoundryClient] Fetching Azure AI Search query:", url);
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "api-key": this.key,
+        },
+        body: JSON.stringify({
+          search: query,
+          top: 3
+        }),
         signal: controller.signal,
       });
 
-      const responseText = response.choices[0]?.message?.content || "";
-      console.log("[FoundryClient] Response received successfully");
-      return { context: responseText, sources: [] };
+      if (!response.ok) {
+        const errorText = await this._extractErrorMessage(response);
+        console.error("FoundryClient queryKnowledge error:", errorText);
+        return { context: "", sources: [] };
+      }
+
+      const data = await response.json();
+      //console.log('[FoundryClient] Full response:', JSON.stringify(data, null, 2));
+      
+      const context = data.value
+        ?.map((doc) => doc.snippet || doc.content || doc.text || JSON.stringify(doc))
+        .filter(Boolean)
+        .join("\n\n") || "";
+
+      console.log("[FoundryClient] Search results count:", data.value?.length || 0);
+      console.log("[FoundryClient] Context length:", context.length);
+
+      const sources = data.value?.map((d) => d.metadata_storage_path || d.metadata_storage_name || d.uid || "unknown") || [];
+
+      return { context, sources };
     } catch (error) {
       const message =
         error.name === "AbortError" ? "Foundry query timed out" : error.message;
@@ -80,6 +102,13 @@ class FoundryClient {
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  _extractErrorMessage(response) {
+    return response
+      .text()
+      .then((text) => text || `HTTP ${response.status}`)
+      .catch(() => `HTTP ${response.status}`);
   }
 }
 

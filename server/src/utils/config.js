@@ -6,19 +6,23 @@ const MONGODB_URI =
     ? process.env.TEST_MONGODB_URI
     : process.env.MONGODB_URI;
 
-// Azure Foundry IQ (World Knowledge Base)
-const AZURE_FOUNDRY_ENDPOINT = process.env.AZURE_FOUNDRY_ENDPOINT;
-const AZURE_FOUNDRY_KEY = process.env.AZURE_FOUNDRY_KEY;
+// Azure OpenAI (LLM)
+const AZURE_OPENAI_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
+const AZURE_OPENAI_KEY = process.env.AZURE_OPENAI_KEY;
+const AZURE_OPENAI_DEPLOYMENT = process.env.AZURE_OPENAI_DEPLOYMENT;
 
-// NVIDIA NIM (LLM)
-const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY;
-const NVIDIA_MODEL = process.env.NVIDIA_MODEL || "meta/llama-3.3-70b-instruct";
+// Azure AI Search (Knowledge Base)
+const AZURE_SEARCH_ENDPOINT = process.env.AZURE_SEARCH_ENDPOINT;
+const AZURE_SEARCH_KEY = process.env.AZURE_SEARCH_KEY;
+const AZURE_SEARCH_INDEX = process.env.AZURE_SEARCH_INDEX || "echoworld-kb";
 
 module.exports = {
   PORT,
   MONGODB_URI,
-  AZURE_FOUNDRY_ENDPOINT,
-  AZURE_FOUNDRY_KEY,
-  NVIDIA_API_KEY,
-  NVIDIA_MODEL,
+  AZURE_OPENAI_ENDPOINT,
+  AZURE_OPENAI_KEY,
+  AZURE_OPENAI_DEPLOYMENT,
+  AZURE_SEARCH_ENDPOINT,
+  AZURE_SEARCH_KEY,
+  AZURE_SEARCH_INDEX,
 };
